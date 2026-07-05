@@ -4,20 +4,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ExpenceManager</title>
+    <title>TrackPro</title>
     <link rel="stylesheet" href="./styles.css">
 </head>
 
 <body>
     <main id="unauthorized">
 
-        <button class="login-theme-btn" id="theme-btn" onclick="toggleTheme()">☀️</button>
+        <button class="login-theme-btn theme-btn" id="theme-btn" onclick="toggleTheme()">
+            <img class="svg-icon theme-icon" src="./icons/sun.svg" alt="" aria-hidden="true">
+        </button>
 
         <form id="form">
             <h1 id="form-title">Login</h1>
             <hr>
             <input type="text" value="" name="username" placeholder="Enter username">
-            <input type="password" value="" name="password" placeholder="Enter password">
+            <input type="text" value="" name="password" placeholder="Enter password">
             <button id="form-btn">Login</button>
             <p id="login-disc">Don't have an account ? <span onclick="authChange(this)">Register</span></p>
             <p id="register-disc">Have an account! <span onclick="authChange(this)">Login</span></p>
@@ -25,31 +27,43 @@
     </main>
     <main id="authorized">
         <!-- sidebar -->
-        <aside>
+        <aside id="sidebar">
             <div id="nav-head">
-                <h1>Expence Manager</h1>
+                <h1>TrackPro</h1>
             </div>
             <div id="nav-body">
-                <h3>Liks : </h3>
                 <div id="links">
                     <button class="nav-btns active-btn" onclick="changePage(this,'dashboard')">Dashboard</button>
-                    <button class="nav-btns" onclick="changePage(this,'profile')">Profile</button>
+                    <button class="nav-btns" onclick="changePage(this,'profile')">Settings</button>
                 </div>
+                <button id="addBtn" onclick="toggleModal()">Add Transaction</button>
             </div>
-            <button id="addBtn" onclick="toggleModal()">Add Transaction</button>
 
         </aside>
+        <button id="sidebar-overlay" type="button" aria-label="Close side menu"></button>
 
         <!-- main content section -->
         <section>
 
             <!-- top header -->
             <header>
-                <h1 id="header-title">Dashboard</h1>
+                <div id="header-left">
+                    <button id="menu-toggle" type="button" aria-label="Toggle side menu" aria-controls="sidebar"
+                        aria-expanded="false">
+                        <img class="svg-icon icon-menu" src="./icons/menu.svg" alt="">
+                    </button>
+                    <h1 id="header-title">Dashboard</h1>
+                </div>
                 <div id="header-right">
-                    <button id="theme-btn" onclick="toggleTheme()">☀️</button>
+                    <button id="reset-btn" type="button" aria-label="Reset transactions" onclick="reset()">
+                        <img class="svg-icon icon-reset" src="./icons/reset.svg" alt="" aria-hidden="true">
+                    </button>
+                    <button id="theme-btn" class="theme-btn" onclick="toggleTheme()">
+                        <img class="svg-icon theme-icon" src="./icons/sun.svg" alt="">
+                    </button>
                     <h3 id="user-name">User</h3>
-                    <button id="logout-btn">Logout <span> > </span></button>
+                    <button id="logout-btn" type="button" aria-label="Logout"><img class="svg-icon icon-logout" src="./icons/logout.svg" alt=""
+                        ><span>Logout</span></button>
                 </div>
             </header>
 
@@ -59,22 +73,26 @@
                 <!-- expence show -->
                 <div id="topCards">
                     <div class="card">
-                        <div class="card-icon">B</div>
+                        <div class="card-icon"><img class="card-svg" src="./icons/balance.svg" alt=""
+                                aria-hidden="true"></div>
                         <p>Current Balance</p>
-                        <h3><span class="currency-symbol">$</span><span id="current-balance">0.00</span></h3>
+                        <h3><span class="currency-symbol">₹</span><span id="current-balance">0.00</span></h3>
                     </div>
                     <div class="card">
-                        <div class="card-icon">I</div>
+                        <div class="card-icon"><img class="card-svg" src="./icons/income.svg" alt="" aria-hidden="true">
+                        </div>
                         <p>Total Income</p>
-                        <h3><span class="currency-symbol">$</span><span id="total-income">0.00</span></h3>
+                        <h3><span class="currency-symbol">₹</span><span id="total-income">0.00</span></h3>
                     </div>
                     <div class="card">
-                        <div class="card-icon">E</div>
+                        <div class="card-icon"><img class="card-svg" src="./icons/expense.svg" alt=""
+                                aria-hidden="true"></div>
                         <p>Total Expense</p>
-                        <h3><span class="currency-symbol">$</span><span id="total-expense">0.00</span></h3>
+                        <h3><span class="currency-symbol">₹</span><span id="total-expense">0.00</span></h3>
                     </div>
                     <div class="card">
-                        <div class="card-icon">T</div>
+                        <div class="card-icon"><img class="card-svg" src="./icons/transaction.svg" alt=""
+                                aria-hidden="true"></div>
                         <p>Total Transaction</p>
                         <h3><span id="transaction-count">0</span></h3>
                     </div>
@@ -82,7 +100,46 @@
 
                 <!-- expence table  -->
                 <div id="expence-table">
+                    <div id="table-head">
+                        <h1>All Transactions</h1>
+                        <button id="addBtn" onclick="toggleModal()">Add Transaction</button>
 
+                    </div>
+                    <div id="table-top">
+                        <div id="search-bar">
+                            <img class="svg-icon icon-search search-icon" src="./icons/search.svg" alt=""
+                                aria-hidden="true">
+                            <input type="text" id="search-input" placeholder="Search transactions...">
+                        </div>
+                        <select name="transaction-type" id="transaction-filter">
+                            <option value="all">All Transactions</option>
+                            <option value="expense">Expense Only</option>
+                            <option value="income">Income Only</option>
+                        </select>
+                    </div>
+
+                    <div id="table-scroll">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Category</th>
+                                    <th>Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+
+                <!-- chart  -->
+                <div id="chart-box">
+                    <h1>Overview</h1>
+                    <canvas id="myChart"></canvas>
                 </div>
             </div>
 
@@ -90,6 +147,10 @@
             <div class="pages" id="profile">
                 <div class="profile-box">
                     <h2>Profile</h2>
+                    <div class="field-group">
+                        <label for="profile-username">Username</label>
+                        <input type="text" id="profile-username" placeholder="Enter username">
+                    </div>
                     <div class="field-group">
                         <label for="currency-inp">Currency</label>
                         <select id="currency-inp">
@@ -99,6 +160,7 @@
                             <option value="£">£ GBP</option>
                         </select>
                     </div>
+                    <button id="profile-save-btn" onclick="saveProfile()">Save</button>
                 </div>
             </div>
 
@@ -109,12 +171,9 @@
             <div id="form">
                 <div class="form-header">
                     <h1 id="Modal-title">Add Transaction</h1>
-                    <div onclick="closeModal()"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x-icon lucide-x">
-                            <path d="M18 6 6 18" />
-                            <path d="m6 6 12 12" />
-                        </svg></div>
+                    <button type="button" class="close-btn" onclick="closeModal()" aria-label="Close modal">
+                        <img class="svg-icon icon-close" src="./icons/close.svg" alt="" aria-hidden="true">
+                    </button>
                 </div>
                 <div class="field-group">
                     <label for="type-inp">Type</label>
@@ -157,6 +216,7 @@
         </div>
     </main>
 </body>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="./script.js"></script>
 
 </html>

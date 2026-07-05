@@ -1,20 +1,46 @@
 const authForm = document.querySelector("#form");
-const formTitle = document.querySelector("#form-title");
-const loginDisc = document.querySelector("#login-disc");
-const registerDisc = document.querySelector("#register-disc");
-const formBtn = document.querySelector("#form-btn");
 const userName = document.querySelector("#user-name");
-const Container = document.querySelector("#expence-table");
+const Container = document.querySelector("#table-body");
 const ModalTitle = document.querySelector("#Modal-title");
 const ModalBtn = document.querySelector("#Modal-btn");
+const profileUsername = document.querySelector("#profile-username");
 const currencySelect = document.querySelector("#currency-inp");
+const searchInp = document.querySelector("#search-input");
+const transactionFilter = document.querySelector("#transaction-filter");
+const authorizedApp = document.querySelector("#authorized");
 
 let authMode = "login";
 let isEdit = false;
 let currentCard = null;
-let currentUser = localStorage.getItem("currentUser") || "";
-let currentCurrency = "$";
+let currentUser = null;
+let currentCurrency = "₹";
 let expenceStore = [];
+let expenceChart = null;
+
+function reset() {
+  const key = getTransactionKey(getCurrentUsername());
+  localStorage.removeItem(key);
+  expenceStore = [];
+  updateUi();
+}
+
+const sidebarToggle = document.querySelector("#menu-toggle");
+
+function setSidebarOpen(isOpen) {
+  if (!authorizedApp) {
+    return;
+  }
+
+  authorizedApp.classList.toggle("sidebar-open", isOpen);
+
+  if (sidebarToggle) {
+    sidebarToggle.setAttribute("aria-expanded", String(isOpen));
+  }
+}
+
+function toggleSidebar() {
+  setSidebarOpen(!authorizedApp?.classList.contains("sidebar-open"));
+}
 
 function getUsers() {
   return JSON.parse(localStorage.getItem("users")) || [];
@@ -24,12 +50,18 @@ function saveUsers(users) {
   localStorage.setItem("users", JSON.stringify(users));
 }
 
-function getTransactionKey(username = currentUser) {
-  return `transactions_${username}`;
+function getCurrentUserData() {
+  return currentUser;
 }
 
-function getCurrencyKey(username = currentUser) {
-  return `currency_${username}`;
+function getCurrentUsername() {
+  return currentUser ? currentUser.username : "";
+}
+
+function getTransactionKey(username = currentUser) {
+  let keyUsername =
+    typeof username === "string" ? username : username?.username;
+  return `transactions_${keyUsername || ""}`;
 }
 
 function formatAmount(amount) {
@@ -37,6 +69,11 @@ function formatAmount(amount) {
 }
 
 function setAuthMode(mode) {
+  const loginDisc = document.querySelector("#login-disc");
+  const registerDisc = document.querySelector("#register-disc");
+  const formBtn = document.querySelector("#form-btn");
+  const formTitle = document.querySelector("#form-title");
+
   authMode = mode;
   let isRegister = mode === "register";
 
@@ -55,6 +92,7 @@ authForm.addEventListener("submit", (event) => {
 
   let username = authForm.elements.namedItem("username").value.trim();
   let password = authForm.elements.namedItem("password").value.trim();
+  let user = null;
 
   if (!username || !password) {
     return;
@@ -68,10 +106,10 @@ authForm.addEventListener("submit", (event) => {
       return;
     }
 
-    users.push({ username, password });
+    users.push({ username, password, currency: "$" });
     saveUsers(users);
   } else {
-    let user = users.find(
+    user = users.find(
       (item) => item.username === username && item.password === password,
     );
 
@@ -81,15 +119,12 @@ authForm.addEventListener("submit", (event) => {
     }
   }
 
-  currentUser = username;
-  localStorage.setItem("auth", "true");
-  localStorage.setItem("currentUser", username);
-
-  if (!localStorage.getItem(getCurrencyKey(username))) {
-    localStorage.setItem(getCurrencyKey(username), "$");
-  }
-
-  currentCurrency = localStorage.getItem(getCurrencyKey(username)) || "$";
+  currentUser = {
+    username: username,
+    currency: user?.currency || "$",
+  };
+  localStorage.setItem("currentUser", JSON.stringify(currentUser));
+  currentCurrency = currentUser.currency;
 
   authForm.reset();
   setAuthMode("login");
@@ -100,8 +135,8 @@ function setTheme(theme) {
   document.body.classList.toggle("dark", theme === "dark");
   localStorage.setItem("theme", theme);
 
-  document.querySelectorAll("#theme-btn").forEach((btn) => {
-    btn.textContent = theme === "dark" ? "🌙" : "☀️";
+  document.querySelectorAll(".theme-icon").forEach((icon) => {
+    icon.src = theme === "dark" ? "./icons/moon.svg" : "./icons/sun.svg";
   });
 }
 
@@ -115,6 +150,11 @@ setTheme(localStorage.getItem("theme") || "light");
 function changePage(currBtn, currPage) {
   let pages = document.getElementsByClassName("pages");
   let headerTitle = document.getElementById("header-title");
+  let nextPage = document.getElementById(currPage);
+
+  if (!nextPage) {
+    return;
+  }
 
   for (let page of pages) {
     page.style.display = "none";
@@ -128,11 +168,20 @@ function changePage(currBtn, currPage) {
 
   currBtn.classList.add("active-btn");
 
-  document.getElementById(currPage).style.display = "block";
-  headerTitle.textContent = currPage;
+  nextPage.style.display = "block";
+  headerTitle.textContent = currPage === "profile" ? "Settings" : currPage;
+  setSidebarOpen(false);
+
+  if (currPage === "profile") {
+    updateProfile();
+  }
 }
 
 function syncCurrencyUi() {
+  if (currencySelect) {
+    currentCurrency = currencySelect.value || currentCurrency;
+  }
+
   document.querySelectorAll(".currency-symbol").forEach((item) => {
     item.textContent = currentCurrency;
   });
@@ -143,23 +192,31 @@ function syncCurrencyUi() {
 }
 
 function loadTransactions() {
-  if (!currentUser) {
+  let username = getCurrentUsername();
+
+  if (!username) {
     expenceStore = [];
     return;
   }
 
-  expenceStore = JSON.parse(localStorage.getItem(getTransactionKey())) || [];
+  expenceStore =
+    JSON.parse(localStorage.getItem(getTransactionKey(username))) || [];
 }
 
 function saveTransactions() {
-  if (!currentUser) {
+  let username = getCurrentUsername();
+
+  if (!username) {
     return;
   }
 
-  localStorage.setItem(getTransactionKey(), JSON.stringify(expenceStore));
+  localStorage.setItem(
+    getTransactionKey(username),
+    JSON.stringify(expenceStore),
+  );
 }
 
-function updateTopCards() {
+function updateAmounts() {
   let income = 0;
   let expense = 0;
 
@@ -182,38 +239,117 @@ function updateTopCards() {
   document.querySelector("#transaction-count").textContent =
     expenceStore.length;
   syncCurrencyUi();
+  renderChart(income, expense);
+}
+
+function renderChart(income = 0, expense = 0) {
+  const chartCanvas = document.querySelector("#myChart");
+
+  if (!chartCanvas) {
+    return;
+  }
+
+  let ctx = chartCanvas.getContext("2d");
+
+  if (expenceChart) {
+    expenceChart.data.datasets[0].data = [income, expense];
+    expenceChart.update();
+    return;
+  }
+
+  expenceChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: ["Income", "Expense"],
+      datasets: [
+        {
+          label: "Amount",
+          data: [income, expense],
+          borderWidth: 1,
+          backgroundColor: ["#51ff91", "#dc2626"],
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+        },
+      },
+      plugins: {
+        legend: {
+          display: false,
+        },
+      },
+    },
+  });
+}
+
+function getVisibleTransactions() {
+  let searchValue = searchInp ? searchInp.value.trim().toLowerCase() : "";
+  let filterValue = transactionFilter ? transactionFilter.value : "all";
+
+  return expenceStore.filter((item) => {
+    let matchesSearch =
+      !searchValue ||
+      item.description.toLowerCase().includes(searchValue) ||
+      item.category.toLowerCase().includes(searchValue) ||
+      item.date.toLowerCase().includes(searchValue) ||
+      item.type.toLowerCase().includes(searchValue);
+
+    let matchesFilter =
+      filterValue === "all" || item.type.toLowerCase() === filterValue;
+
+    return matchesSearch && matchesFilter;
+  });
 }
 
 function checkAuth() {
-  currentUser = localStorage.getItem("currentUser") || "";
+  let savedUser = localStorage.getItem("currentUser");
 
-  if (currentUser) {
+  if (savedUser) {
+    try {
+      currentUser = JSON.parse(savedUser);
+    } catch (error) {
+      currentUser = {
+        username: savedUser,
+        currency: "$",
+      };
+    }
+  } else {
+    currentUser = null;
+  }
+
+  if (currentUser && currentUser.username) {
     document.getElementById("unauthorized").style.display = "none";
     document.getElementById("authorized").style.display = "flex";
-    userName.textContent = currentUser;
-    currentCurrency = localStorage.getItem(getCurrencyKey(currentUser)) || "$";
+    userName.textContent = currentUser.username;
+    currentCurrency = currentUser.currency || "$";
     loadTransactions();
-    updateTopCards();
-    renderUi();
+    updateProfile();
+    updateAmounts();
+    updateUi();
     return;
   }
 
   document.getElementById("unauthorized").style.display = "flex";
   document.getElementById("authorized").style.display = "none";
   expenceStore = [];
-  updateTopCards();
-  renderUi();
+  updateAmounts();
+  updateUi();
+  renderChart();
 }
 
 checkAuth();
 
 if (currencySelect) {
-  currencySelect.addEventListener("change", (event) => {
-    currentCurrency = event.target.value;
-    localStorage.setItem(getCurrencyKey(), currentCurrency);
+  currencySelect.addEventListener("change", () => {
+    currentCurrency = currencySelect.value;
     syncCurrencyUi();
-    updateTopCards();
-    renderUi();
+    updateAmounts();
+    updateUi();
   });
 }
 
@@ -221,13 +357,35 @@ const logoutBtn = document.querySelector("#logout-btn");
 
 if (logoutBtn) {
   logoutBtn.addEventListener("click", () => {
+    setSidebarOpen(false);
     localStorage.removeItem("currentUser");
-    localStorage.removeItem("auth");
-    currentUser = "";
+    currentUser = null;
     expenceStore = [];
     checkAuth();
   });
 }
+
+if (sidebarToggle) {
+  sidebarToggle.addEventListener("click", toggleSidebar);
+}
+
+const sidebarOverlay = document.querySelector("#sidebar-overlay");
+
+if (sidebarOverlay) {
+  sidebarOverlay.addEventListener("click", () => setSidebarOpen(false));
+}
+
+window.addEventListener("resize", () => {
+  if (window.innerWidth > 640) {
+    setSidebarOpen(false);
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    setSidebarOpen(false);
+  }
+});
 
 function closeModal() {
   document.querySelector(".Modal").classList.add("hide");
@@ -288,48 +446,118 @@ function toggleModal(index = null) {
   document.querySelector(".Modal").classList.toggle("hide");
 }
 
-function renderUi() {
+function updateUi() {
   if (!Container) {
     return;
   }
 
-  if (!currentUser) {
+  if (!getCurrentUsername()) {
     Container.innerHTML = "";
     return;
   }
 
   let ui = "";
+  let visibleTransactions = getVisibleTransactions();
 
   saveTransactions();
 
-  expenceStore.forEach((item, index) => {
+  visibleTransactions.forEach((item) => {
+    let index = expenceStore.indexOf(item);
     ui += `
-    <div class="Card">
-          <div class="Card-header">
-            <h1 class="Card-title">${item.description}</h1>
-            <div class="Card-actions">
-                <div onclick="editTask(${index})"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil-icon lucide-pencil icon"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg></div>
-                <div onclick="deleteTask(${index})"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2-icon lucide-trash-2 icon"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div>
-                <div onclick="toggleModal(${index})"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-icon lucide-eye icon"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg></div>
-            </div>
-          </div>
-          <p class="Card-descreption">
-           ${item.description}
-          </p>
-          <div class="Card-footer">
-            <span class="Card-category">${item.type}</span>
-            <span class="Card-category">${item.category}</span>
-            <span class="Card-category"><span class="currency-symbol">${currentCurrency}</span>${formatAmount(
-              item.amount,
-            )}</span>
-            <span class="Card-category">${item.date}</span>
-          </div>
+    <tr>
+      <td>${item.date}</td>
+      <td><span class="table-description">${item.description}</span></td>
+      <td><span class="table-pill">${item.category}</span></td>
+      <td class="table-amount ${item.type === "Income" ? "income" : "expense"}"><span class="currency-symbol">${currentCurrency}</span>${formatAmount(item.amount)}</td>
+      <td>
+        <div class="table-actions">
+          <button type="button" class="table-action-btn view" onclick="toggleModal(${index})" aria-label="View transaction">
+            <img class="svg-icon action-icon" src="./icons/view.svg" alt="" aria-hidden="true">
+          </button>
+          <button type="button" class="table-action-btn edit" onclick="editTask(${index})" aria-label="Edit transaction">
+            <img class="svg-icon action-icon" src="./icons/edit.svg" alt="" aria-hidden="true">
+          </button>
+          <button type="button" class="table-action-btn delete" onclick="deleteTask(${index})" aria-label="Delete transaction">
+            <img class="svg-icon action-icon" src="./icons/delete.svg" alt="" aria-hidden="true">
+          </button>
         </div>
+      </td>
+    </tr>
     `;
   });
 
-  Container.innerHTML = ui || '<p class="empty-state">No transactions yet.</p>';
-  updateTopCards();
+  Container.innerHTML =
+    ui ||
+    '<tr><td colspan="5"><p class="empty-state">No transactions yet.</p></td></tr>';
+  updateAmounts();
+}
+
+function updateProfile() {
+  if (profileUsername) {
+    profileUsername.value = currentUser?.username || "";
+  }
+
+  if (currencySelect) {
+    currencySelect.value = currentCurrency;
+  }
+}
+
+function saveProfile() {
+  let newUsername = profileUsername
+    ? profileUsername.value.trim()
+    : getCurrentUsername();
+  let newCurrency = currencySelect ? currencySelect.value : currentCurrency;
+
+  if (!newUsername) {
+    return;
+  }
+
+  let users = getUsers();
+  let currentIndex = users.findIndex(
+    (item) => item.username === getCurrentUsername(),
+  );
+
+  if (currentIndex === -1) {
+    return;
+  }
+
+  let existingUser = users.find(
+    (item) =>
+      item.username === newUsername && item.username !== getCurrentUsername(),
+  );
+
+  if (existingUser) {
+    alert("Username already exists");
+    return;
+  }
+
+  let oldUsername = getCurrentUsername();
+  let oldKey = getTransactionKey(oldUsername);
+  let newKey = getTransactionKey(newUsername);
+
+  users[currentIndex].username = newUsername;
+  users[currentIndex].currency = newCurrency;
+
+  if (newUsername !== oldUsername) {
+    localStorage.setItem(
+      newKey,
+      localStorage.getItem(oldKey) || JSON.stringify(expenceStore),
+    );
+    localStorage.removeItem(oldKey);
+  }
+
+  saveUsers(users);
+  currentUser = {
+    username: newUsername,
+    currency: newCurrency,
+  };
+  localStorage.setItem("currentUser", JSON.stringify(currentUser));
+  currentCurrency = newCurrency;
+  userName.textContent = newUsername;
+  updateProfile();
+  syncCurrencyUi();
+  updateAmounts();
+  updateUi();
 }
 
 function addTask() {
@@ -375,7 +603,7 @@ function addTask() {
   category.value = "";
 
   toggleModal();
-  renderUi();
+  updateUi();
 }
 
 function editTask(index) {
@@ -395,5 +623,13 @@ function editTask(index) {
 
 function deleteTask(index) {
   expenceStore.splice(index, 1);
-  renderUi();
+  updateUi();
+}
+
+if (searchInp) {
+  searchInp.addEventListener("input", updateUi);
+}
+
+if (transactionFilter) {
+  transactionFilter.addEventListener("change", updateUi);
 }
