@@ -9,7 +9,21 @@
 </head>
 
 <body>
-    <main>
+    <main id="unauthorized">
+
+        <button class="login-theme-btn" id="theme-btn" onclick="toggleTheme()">☀️</button>
+
+        <form id="form">
+            <h1 id="form-title">Login</h1>
+            <hr>
+            <input type="text" value="" name="username" placeholder="Enter username">
+            <input type="password" value="" name="password" placeholder="Enter password">
+            <button id="form-btn">Login</button>
+            <p id="login-disc">Don't have an account ? <span onclick="authChange(this)">Register</span></p>
+            <p id="register-disc">Have an account! <span onclick="authChange(this)">Login</span></p>
+        </form>
+    </main>
+    <main id="authorized">
         <!-- sidebar -->
         <aside>
             <div id="nav-head">
@@ -18,10 +32,12 @@
             <div id="nav-body">
                 <h3>Liks : </h3>
                 <div id="links">
-                    <button onclick="changePage('dashboard')">Dashboard</button>
-                    <button onclick="changePage('profile')">Profile</button>
+                    <button class="nav-btns active-btn" onclick="changePage(this,'dashboard')">Dashboard</button>
+                    <button class="nav-btns" onclick="changePage(this,'profile')">Profile</button>
                 </div>
             </div>
+            <button id="addBtn" onclick="toggleModal()">Add Transaction</button>
+
         </aside>
 
         <!-- main content section -->
@@ -31,7 +47,7 @@
             <header>
                 <h1 id="header-title">Dashboard</h1>
                 <div id="header-right">
-                    <button>☀️</button>
+                    <button id="theme-btn" onclick="toggleTheme()">☀️</button>
                     <h3 id="user-name">User</h3>
                     <button id="logout-btn">Logout <span> > </span></button>
                 </div>
@@ -43,24 +59,24 @@
                 <!-- expence show -->
                 <div id="topCards">
                     <div class="card">
-                        <div class="card-icon">H</div>
+                        <div class="card-icon">B</div>
                         <p>Current Balance</p>
-                        <h3>-$ <span id="current-balance">123.00</span></h3>
+                        <h3><span class="currency-symbol">$</span><span id="current-balance">0.00</span></h3>
                     </div>
                     <div class="card">
-                        <div class="card-icon">H</div>
-                        <p>Current Balance</p>
-                        <h3>-$ <span id="current-balance">123.00</span></h3>
+                        <div class="card-icon">I</div>
+                        <p>Total Income</p>
+                        <h3><span class="currency-symbol">$</span><span id="total-income">0.00</span></h3>
                     </div>
                     <div class="card">
-                        <div class="card-icon">H</div>
-                        <p>Current Balance</p>
-                        <h3>-$ <span id="current-balance">123.00</span></h3>
+                        <div class="card-icon">E</div>
+                        <p>Total Expense</p>
+                        <h3><span class="currency-symbol">$</span><span id="total-expense">0.00</span></h3>
                     </div>
                     <div class="card">
-                        <div class="card-icon">H</div>
-                        <p>Current Balance</p>
-                        <h3>-$ <span id="current-balance">123.00</span></h3>
+                        <div class="card-icon">T</div>
+                        <p>Total Transaction</p>
+                        <h3><span id="transaction-count">0</span></h3>
                     </div>
                 </div>
 
@@ -72,11 +88,73 @@
 
             <!-- Settings page -->
             <div class="pages" id="profile">
-                Profile
+                <div class="profile-box">
+                    <h2>Profile</h2>
+                    <div class="field-group">
+                        <label for="currency-inp">Currency</label>
+                        <select id="currency-inp">
+                            <option value="$">$ USD</option>
+                            <option value="₹">₹ INR</option>
+                            <option value="€">€ EUR</option>
+                            <option value="£">£ GBP</option>
+                        </select>
+                    </div>
+                </div>
             </div>
 
 
+
         </section>
+        <div class="Modal hide">
+            <div id="form">
+                <div class="form-header">
+                    <h1 id="Modal-title">Add Transaction</h1>
+                    <div onclick="closeModal()"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x-icon lucide-x">
+                            <path d="M18 6 6 18" />
+                            <path d="m6 6 12 12" />
+                        </svg></div>
+                </div>
+                <div class="field-group">
+                    <label for="type-inp">Type</label>
+                    <select id="type-inp" required>
+                        <option value="Expense">Expense</option>
+                        <option value="Income">Income</option>
+                    </select>
+                </div>
+                <div class="field-group">
+                    <label for="description-inp">Description</label>
+                    <input type="text" value="" name="description" placeholder="e.g. Amazon, Salary, Coffee"
+                        id="description-inp" required />
+                </div>
+                <div class="field-row">
+                    <div class="field-group">
+                        <label for="amount-inp">Amount</label>
+                        <input type="number" value="" name="amount" placeholder="0.00" id="amount-inp" required />
+                    </div>
+                    <div class="field-group">
+                        <label for="date-inp">Date</label>
+                        <input type="date" value="" name="date" id="date-inp" required />
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label for="category-inp">Category</label>
+                    <select id="category-inp" required>
+                        <option value="">Select a category</option>
+                        <option value="Food & Dining">Food & Dining</option>
+                        <option value="Shopping">Shopping</option>
+                        <option value="Recharge & Bills">Recharge & Bills</option>
+                        <option value="Petrol & Auto">Petrol & Auto</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Salary">Salary</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <button id="Modal-btn" onclick="addTask()">Add Transaction</button>
+            </div>
+        </div>
     </main>
 </body>
 <script src="./script.js"></script>
